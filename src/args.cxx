@@ -1,10 +1,10 @@
-#include "utils/args.hxx"
-
 #include <print>
 
 #include "commands.hxx"
+#include "utils/args.hxx"
+#include "utils/error.hxx"
 
-#define VERSION    "1.1.0"
+#define VERSION    "1.1.1"
 #define ANSI_BOLD  "\033[1m"
 #define ANSI_RESET "\033[0m"
 
@@ -105,9 +105,9 @@ namespace utils {
             } else if (option == "--no-color") {
                 env.colorized = false;
             } else if (option[0] == '-') {
-                throw std::invalid_argument(
+                throw utils::argument_error(
                         std::format(
-                            "argument error: unknown option: {:?}", option));
+                            "Unknown option: {:?}.", option));
             } else {
                 argn--;
                 break;
@@ -117,14 +117,13 @@ namespace utils {
         // parse command
         env.command = arg_next();
         if (env.command.empty())
-            throw std::invalid_argument(
-                    "argument error: missing required command");
+            throw utils::argument_error("Missing required command.");
         else if (env.command == "update") {
             env.target = arg_next();
             if (env.target.empty())
-                throw std::invalid_argument(
+                throw utils::argument_error(
                         std::format(
-                            "argument error: command {:?}: missing required value",
+                            "Command {:?}: missing required value.",
                             env.command));
 
             // parse options
@@ -136,13 +135,13 @@ namespace utils {
                         || option == "--source") {
                     env.sourcePath = arg_next();
                     if (env.sourcePath.empty())
-                        throw std::invalid_argument(
+                        throw utils::argument_error(
                                 std::format(
-                                    "argument error: command {:?}: missing required value for option: {:?}",
+                                    "Command {:?}: missing required value for option: {:?}.",
                                     env.command, option));
-                } else throw std::invalid_argument(
+                } else throw utils::argument_error(
                         std::format(
-                            "argument error: command {:?}: unknown option: {:?}",
+                            "Command {:?}: unknown option: {:?}.",
                             env.command, option));
             }
 
@@ -154,22 +153,23 @@ namespace utils {
                 if (option.empty())
                     continue;
                 else if (option == "-s"
-                        || "--source") {
+                        || option == "--source") {
                     env.sourcePath = arg_next();
                     if (env.sourcePath.empty())
-                        throw std::invalid_argument(
+                        throw utils::argument_error(
                                 std::format(
-                                    "argument error: command {:?}: missing required value for option: {:?}",
+                                    "Command {:?}: missing required value for option: {:?}.",
                                     env.command, option));
-                } else throw std::invalid_argument(
+                } else throw utils::argument_error(
                         std::format(
-                            "argument error: command {:?}: unknown option: {:?}",
+                            "Command {:?}: unknown option: {:?}.",
                             env.command, option));
             }
 
             commands::diff(env);
-        } else throw std::invalid_argument(
-                std::format("argument error: unknown command: {:?}",
+        } else throw utils::argument_error(
+                std::format(
+                    "Unknown command: {:?}.",
                     env.command));
     }
 } // namespace utils

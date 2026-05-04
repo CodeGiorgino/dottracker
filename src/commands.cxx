@@ -1,11 +1,11 @@
-#include "commands.hxx"
-
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <print>
 
+#include "commands.hxx"
 #include "parser.hxx"
+#include "utils/error.hxx"
 
 #define ANSI_BOLD   "\033[1m"
 #define ANSI_RESET  "\033[0m"
@@ -25,9 +25,9 @@ auto get_config_file_path(const enviroment& env) -> fs::path {
     if (env.sourcePath.empty()) {
         const auto homePathStr { std::getenv("HOME") };
         if (!homePathStr)
-            throw std::runtime_error(
-                    "system error: cannot find home path: try set 'HOME' enviroment variable,\n"
-                    "              or provide a source file with the '-s | --source' option.");
+            throw utils::system_error(
+                    "Cannot find home path: try setting 'HOME' enviroment variable,\n"
+                    "  or provide a source file with the '-s | --source' option.");
 
         return {
             fs::path { homePathStr } / ".config" / "dottracker" / "files.conf"
@@ -39,9 +39,9 @@ namespace commands {
     auto update(const enviroment& env) -> void {
         const auto repoFilesPath = get_repo_files_path(env);
         if (!fs::exists(repoFilesPath))
-            throw std::runtime_error(
+            throw utils::command_error(
                     std::format(
-                        "command error: command {:?}: cannot find repository files directory: [{}]",
+                        "Command {:?}: cannot find repository files directory: [{}].",
                         env.command, repoFilesPath.string()));
 
         parser p { get_config_file_path(env).string() };
@@ -58,40 +58,40 @@ namespace commands {
             if (env.target == "local") {
                 if (!fs::exists(repoFilePath)) {
                     std::println(std::cerr,
-                            "command error: command {:?}: cannot find repository file: [{}] [{}]",
-                            env.command, hash, repoFilePath.string());
+                            "-- Cannot find repository file: [{}] [{}].",
+                            hash, repoFilePath.string());
                     continue;
                 }
 
                 if (!fs::exists(parentPath)
                         && !fs::create_directories(parentPath)) {
                     std::println(std::cerr,
-                            "command error: command: {:?}: file [{}]: cannot create local path: [{}]",
-                            env.command, filename, parentPath);
+                            "-- File [{}]: cannot create local path: [{}].",
+                            filename, parentPath);
                     continue;
                 }
 
                 std::println(std::clog,
-                        "Updating local file: [{:20}] [{}]", filename,
+                        "-- Updating local file: [{:20}] [{}].", filename,
                         repoFilePath.string());
                 fs::copy(repoFilePath, filePath,
                         fs::copy_options::overwrite_existing);
             } else if (env.target == "repo") {
                 if (!fs::exists(filePath)) {
                     std::println(std::cerr,
-                            "command error: command {:?}: cannot find local file: [{}] [{}]",
+                            "-- Cannot find local file: [{}] [{}].",
                             env.command, filename, parentPath);
                     continue;
                 }
 
                 std::println(std::clog,
-                        "Updating repository file: [{:20}] [{}]", hash,
+                        "-- Updating repository file: [{:20}] [{}].", hash,
                         repoFilePath.string());
                 fs::copy(filePath, repoFilePath,
                         fs::copy_options::overwrite_existing);
-            } else throw std::runtime_error(
+            } else throw utils::command_error(
                     std::format(
-                        "command error: command {:?}: unknown target: {:?}",
+                        "Command {:?}: unknown target: {:?}.",
                         env.command, env.target));
         }
     }
@@ -99,9 +99,9 @@ namespace commands {
     auto diff(const enviroment& env) -> void {
         const auto repoFilesPath = get_repo_files_path(env);
         if (!fs::exists(repoFilesPath))
-            throw std::runtime_error(
+            throw utils::command_error(
                     std::format(
-                        "command error: command {:?}: cannot find repository files directory: [{}]",
+                        "Command {:?}: cannot find repository files directory: [{}].",
                         env.command, repoFilesPath.string()));
 
         parser p { get_config_file_path(env).string() };
@@ -120,6 +120,7 @@ namespace commands {
 
             std::print("[{:20}] | {} | ", filename, hash);
 
+            // check if file is missing
             if (!fs::exists(repoFilePath)) {
                 if (env.colorized)
                     std::print(ANSI_YELLOW);
@@ -134,20 +135,21 @@ namespace commands {
 
             std::ifstream localStream { filePath };
             if (!localStream) {
-                std::println(
-                        "command error: command {:?}: cannot open local file: [{}] [{}]",
-                        env.command, filename, parentPath);
+                std::println(std::cerr,
+                        "-- Cannot open local file: [{}].",
+                        filePath);
                 continue;
             }
 
             std::ifstream repoStream { repoFilePath.string() };
             if (!repoStream) {
-                std::println("command error: command {:?}: cannot open repository file: [{}] [{}]",
-                        env.command, hash, repoFilePath.string());
+                std::println(std::cerr,
+                        "-- Cannot open repository file: [{}].",
+                        repoFilePath.string());
                 continue;
             }
 
-            // size mismatch
+            // check for size mismatch
             if (fs::file_size(fs::path { filePath })
                     != fs::file_size(repoFilePath)) {
                 if (env.colorized)
@@ -156,6 +158,7 @@ namespace commands {
                 continue;
             }
 
+            // check for content mismatch
             if (std::equal(
                         std::istreambuf_iterator<char>(localStream.rdbuf()),
                         std::istreambuf_iterator<char>(),

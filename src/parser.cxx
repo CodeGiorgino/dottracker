@@ -1,24 +1,26 @@
-#include "parser.hxx"
-
 #include <format>
 #include <fstream>
 #include <ranges>
+
+#include "parser.hxx"
+#include "utils/error.hxx"
 
 namespace fs = std::filesystem;
 namespace ranges = std::ranges;
 namespace views = std::ranges::views;
 
-parser::parser(std::string_view filePath) :
-    filePath(fs::absolute(filePath)) {
-        if (!fs::exists(filePath))
-            throw std::runtime_error(
-                    std::format("parser error: cannot find file: [{}]",
-                        filePath));
-        else if (!fs::is_regular_file(filePath))
-            throw std::runtime_error(
+parser::parser(fs::path filePath) :
+    _filePath(fs::absolute(filePath)) {
+        if (!fs::exists(_filePath))
+            throw utils::parser_error(
                     std::format(
-                        "parser error: file [{}]: not a regular file",
-                        filePath));
+                        "Cannot find file: [{}].",
+                        _filePath.string()));
+        else if (!fs::is_regular_file(_filePath))
+            throw utils::parser_error(
+                    std::format(
+                        "File [{}]: not a regular file.",
+                        _filePath.string()));
     }
 
 auto trim(std::string_view str) noexcept -> std::string_view {
@@ -34,12 +36,12 @@ auto trim(std::string_view str) noexcept -> std::string_view {
 }
 
 auto parser::lines(void) noexcept -> std::generator<std::string> {
-    std::ifstream streamIn { filePath };
+    std::ifstream streamIn { _filePath };
     if (!streamIn)
-        throw std::runtime_error(
+        throw utils::parser_error(
                 std::format(
-                    "parser error: cannot open file: [{}]",
-                    filePath.string()));
+                    "Cannot open file: [{}].",
+                    _filePath.string()));
 
     std::string line;
     while (std::getline(streamIn, line)) {
@@ -64,10 +66,10 @@ auto parser::lines(void) noexcept -> std::generator<std::string> {
                 const auto realPart = std::getenv(
                         partStr.substr(1).c_str());
                 if (!realPart)
-                    throw std::runtime_error(
+                    throw utils::parser_error(
                             std::format(
-                                "parser error: line {:?}: cannot evaluate enviroment variable: {:?}",
-                                line, partStr));
+                                "[{}:{}]: cannot evaluate enviroment variable: {:?}.",
+                                _filePath.string(), line, partStr));
                 else realFilePath /= std::string { realPart };
             } else realFilePath /= partStr;
         }

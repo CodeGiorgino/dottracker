@@ -9,8 +9,9 @@ auto main(int argc, char** argv) -> int {
         utils::parse_args(env, argc, argv);
     } catch (const std::invalid_argument& ex) {
         const std::string err = ex.what();
-        std::println(std::cerr, "{}\n"
-                "dottracker error: run 'dottracker --help' for all supported commands",
+        std::println(std::cerr,
+                "{}\n"
+                "-- Run 'dottracker --help' for all supported commands",
                 err);
         return 1;
     } catch (const std::exception& ex) {
