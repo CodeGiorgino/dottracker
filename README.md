@@ -17,7 +17,7 @@ cmake --build build -j $((`nproc` - 1))
 ln -fs $(realpath build/dottracker) $HOME/.local/bin
 ```
 
-> [[!IMPORTANT]]
+> [!IMPORTANT]
 > Make sure that "$HOME/.local/bin" exists and that it is part of "$PATH" if
 > you want to install the binary
 
