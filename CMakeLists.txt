@@ -1,11 +1,19 @@
 cmake_minimum_required(VERSION 3.11)
 
 project(dottracker
-    VERSION 1.1
+    VERSION 1.2.0
     LANGUAGES CXX
 )
 
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Configure files
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hxx.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/version.hxx
+    @ONLY)
 
 # Target executable
 
@@ -19,6 +27,9 @@ target_compile_options(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE include)
+
+target_include_directories(${PROJECT_NAME}
+    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 # Create symlink for tracked files in build directory
 
